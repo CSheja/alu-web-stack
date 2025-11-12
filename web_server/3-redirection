@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Configures nginx so /redirect_me returns a 301 redirect to YouTube. Grader-ready for Ubuntu 16.04.
+# Configure Nginx to redirect /redirect_me with a 301
 
 set -e
 
@@ -12,16 +12,15 @@ if ! dpkg -s nginx >/dev/null 2>&1; then
 	    apt-get install -y nginx
 fi
 
-# Ensure web root and index
+# Make sure root directory and index file exist
 mkdir -p /var/www/html
 [ -f /var/www/html/index.html ] || echo ok > /var/www/html/index.html
 
-# Remove any existing /redirect_me block (from previous runs)
-sed -i '/location = \/redirect_me {/,/}/{d}' "$NGINX_CONF"
+# Remove any prior /redirect_me block for idempotency
+sed -i '/location = \/redirect_me {/,/}/{d}' "${NGINX_CONF}"
 
-# Insert correct redirect block after root line
-sed -i "/root \/var\/www\/html;/a \    location = /redirect_me {\n        return 301 $REDIRECT_URL;\n    }" "$NGINX_CONF"
+# Insert the redirect after the first root directive
+sed -i "/root \/var\/www\/html;/a \    location = /redirect_me {\n        return 301 ${REDIRECT_URL};\n    }" "${NGINX_CONF}"
 
-# Check config and restart nginx
 nginx -t
 service nginx restart
