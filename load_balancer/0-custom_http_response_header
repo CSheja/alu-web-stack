@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# This script configures Nginx to add the X-Served-By header using the server hostname
+
+NGINX_CONF="/etc/nginx/sites-enabled/default"
+
+# Ensure Nginx is installed
+sudo apt-get update
+sudo apt-get install -y nginx
+
+# Add the X-Served-By header after the first listen line inside server block
+sudo sed -i '/listen 80 default_server;/a \    add_header X-Served-By \$hostname;' "$NGINX_CONF"
+
+# Test and restart Nginx
+sudo nginx -t
+sudo service nginx restart
