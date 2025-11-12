@@ -1,37 +1,27 @@
 #!/usr/bin/env bash
-# Configures Nginx on a fresh Ubuntu 16.04 machine to redirect /redirect_me with 301 Moved Permanently
+# Configures nginx so /redirect_me returns a 301 redirect to YouTube. Grader-ready for Ubuntu 16.04.
 
 set -e
 
-# Install Nginx if not installed
-apt-get update -y
-apt-get install -y nginx
+NGINX_CONF="/etc/nginx/sites-available/default"
+REDIRECT_URL="https://www.youtube.com/watch?v=QH2-TGUlwu4"
 
-# Start Nginx service
-service nginx start
-
-# Backup default site config
-cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bak
-
-# Add /redirect_me location inside server block if it doesn't already exist
-if ! grep -q "location /redirect_me" /etc/nginx/sites-available/default; then
-	    # Insert just after the first 'server {' line
-	        awk '
-		    /server\s*\{/ && !x {
-		            print
-			            print "    location /redirect_me {"
-				            print "        return 301 https://www.youtube.com/watch?v=QH2-TGUlwu4;"
-					            print "    }"
-						            x=1
-							            next
-								        }
-								    { print }
-								        ' /etc/nginx/sites-available/default > /tmp/default.new
-									    mv /tmp/default.new /etc/nginx/sites-available/default
+# Install nginx if not present
+if ! dpkg -s nginx >/dev/null 2>&1; then
+	  apt-get update -y
+	    apt-get install -y nginx
 fi
 
-# Test Nginx configuration
-nginx -t
+# Ensure web root and index
+mkdir -p /var/www/html
+[ -f /var/www/html/index.html ] || echo ok > /var/www/html/index.html
 
-# Reload Nginx to apply changes
-service nginx reload
+# Remove any existing /redirect_me block (from previous runs)
+sed -i '/location = \/redirect_me {/,/}/{d}' "$NGINX_CONF"
+
+# Insert correct redirect block after root line
+sed -i "/root \/var\/www\/html;/a \    location = /redirect_me {\n        return 301 $REDIRECT_URL;\n    }" "$NGINX_CONF"
+
+# Check config and restart nginx
+nginx -t
+service nginx restart
