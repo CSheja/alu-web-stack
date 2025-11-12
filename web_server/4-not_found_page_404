@@ -1,35 +1,30 @@
 #!/usr/bin/env bash
+# Configures nginx so that /404.html contains "Ceci n'est pas une page" and the error_page directive is set
+
 set -e
 
 NGINX_CONF="/etc/nginx/sites-available/default"
-NOTFOUND="/var/www/html/404.html"
-MSG="Ceci n'est pas une page"
+PAGE="/var/www/html/404.html"
+STRING="Ceci n'est pas une page"
 
-# 1. Install nginx if not present
+# Install nginx if not present
 if ! dpkg -s nginx >/dev/null 2>&1; then
 	  apt-get update -y
 	    apt-get install -y nginx
 fi
 
-mkdir -p /var/www/html
+# Create the required custom 404 page with NO trailing newline
+echo -n "$STRING" > "$PAGE"
+chmod 644 "$PAGE"
 
-# 2. Write page EXACTLY, with NO newline!
-echo -n "$MSG" > "$NOTFOUND"
-chmod 644 "$NOTFOUND"
+# Remove any previous error_page line for idempotency
+sed -i '/error_page 404/d' "$NGINX_CONF"
 
-# 3. Ensure default_type is set for HTML
-if ! grep -q 'default_type text/html;' "$NGINX_CONF"; then
-	  sed -i '/http {/a \    default_type text/html;' "$NGINX_CONF"
-fi
-
-# 4. Remove any previous error_page lines
-sed -i '/error_page 404 \/404.html;/d' "$NGINX_CONF"
-
-# 5. Insert error_page in server block before last }
-awk -v epage="    error_page 404 /404.html;\n" '
-  BEGIN {in_server=0}
-    /^server[ \t]*{/ {in_server=1}
-      in_server && /^\}/ {print epage; in_server=0}
+# Insert the error_page directive inside server { ... } before the last }
+awk -v s="    error_page 404 /404.html;\n" '
+  BEGIN {inserver=0}
+    /^server[ \t]*{/ {inserver=1}
+      inserver && /^\}/ {print s; inserver=0}
         {print}
 	' "$NGINX_CONF" > /tmp/default.conf && mv /tmp/default.conf "$NGINX_CONF"
 
