@@ -1,0 +1,30 @@
+
+bal
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+    maxconn 2048
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+
+frontend https-in
+    bind *:443 ssl crt /etc/haproxy/certs.pem
+    default_backend webservers
+
+backend webservers
+    balance roundrobin
+    server web01 54.161.135.230:80 check
+    server web02 13.221.22.9:80 check
